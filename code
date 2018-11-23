@@ -2,7 +2,7 @@
 require 'move-to-go'
 require 'roo'
 
-"Consultantcase Go - data.xlsx"
+"FileA.xlsx"
 
 ORGANIZATION_SHEET = "Company"
 PERSON_SHEET = "Person"
