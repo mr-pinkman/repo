@@ -1,0 +1,119 @@
+
+require 'move-to-go'
+require 'roo'
+
+"Consultantcase Go - data.xlsx"
+
+ORGANIZATION_SHEET = "Company"
+PERSON_SHEET = "Person"
+COWORKER_SHEET = "Coworker"
+
+
+move-to-go run
+
+class Converter
+    def configure(rootmodel)
+
+        Organization
+        rootmodel.settings.with_organization do |organization|
+             organization.set_custom_field( { :integration_id => 'source', :title => 'idcompany', :type => :Link } )
+	
+         end
+
+        Person
+        rootmodel.settings.with_person  do |person|
+             person.set_custom_field( { :integration_id => 'company', :title => 'company', :type => :Link} )
+        end
+
+        end
+
+    def import_person_to_organization(row, rootmodel)
+        person = to_person(row, rootmodel)
+        organization = rootmodel.find_organization_by_integration_id(row['idcompany'])
+
+        if !organization.nil?
+            organization.add_employee(person)
+        end
+    end
+
+    def to_coworker(row)
+        coworker = MoveToGo::Coworker.new()
+
+       
+        coworker.firstname = row['firstname']
+	coworker.lastname = row['lastname']
+        coworker.integration_id = row['idcoworker']
+       
+        end
+
+        return coworker
+    end
+
+    def to_organization(row, rootmodel)
+        organization = MoveToGo::Organization.new()
+
+        organization.name = row['name']
+        organization.phonenumber = row['phone']
+        organization.website = row['www']
+        organization.organization_number = row['registrationno']
+
+        
+        organization.with_postal_address do |address|
+             address.street = row['postaladdress1']
+	     address.street2 = row['postaladdress2']
+             address.zip_code = row['postalzipcode']
+             address.city = row['postalcity']
+	     address.country = row['country']
+        end
+
+
+       
+        organization.coworker = rootmodel.find_coworker_by_integration_id(row['idcoworker'])
+
+      
+         if row['customer category']
+             category = row['customer category'].split(',')
+             category.each do |categorytag|
+                 organization.set_tag(categorytag.strip)
+		organization.set_tag(row['customer category'])
+             end
+         end
+
+  
+
+        if row['relation'] == 'Active'
+       
+             organization.relation = MoveToGo::Relation::IsACustomer
+        elsif row['relation'] == 'Prospect'
+       
+             organization.relation = MoveToGo::Relation::WorkingOnIt
+        elsif row['relation'] == 'Former customer'
+             organization.relation = MoveToGo::Relation::WasACustomer
+        
+        elsif row['relation'] == 'Not interested'
+		organization.relation = MoveToGo::Relation::BeenInTouch
+        else
+             organization.relation = MoveToGo::Relation::NoRelation
+        end 
+
+        return organization
+    end
+
+    def to_person(row, rootmodel)
+        person = MoveToGo::Person.new()
+
+	person.idnumber = row['idperson']
+        person.firstname = row['firstname']
+	person.lastname = row['lastname']
+
+        if MoveToGo::EmailHelper.is_valid?(row['email'])
+            person.email = row['email']
+        end
+
+        person.direct_phone_number = row['phone']
+        person.mobile_phone_number = row['mobilephone']
+
+       
+
+        return person
+    end
